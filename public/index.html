@@ -19,13 +19,8 @@
     <section id="join-view" class="ledger">
       <h2>Sign the ledger</h2>
       <div class="signing">
-        <input
-          id="name-input"
-          type="text"
-          maxlength="20"
-          placeholder="Your name, traveler"
-          autocomplete="off"
-        />
+        <input id="name-input" type="text" maxlength="20"
+               placeholder="Your name, traveler" autocomplete="off" />
         <button id="join-btn">Enter the inn</button>
       </div>
       <p id="join-error" class="error" hidden></p>
@@ -40,10 +35,28 @@
       <p id="lobby-error" class="error" hidden></p>
     </section>
 
-    <!-- Started: placeholder until the game loop arrives -->
-    <section id="game-view" class="ledger" hidden>
-      <h2>The night begins&hellip;</h2>
-      <p class="note">The doors are barred. The story starts here (next build).</p>
+    <!-- Narration: the story unfolds, then the candles go out -->
+    <section id="narration-view" class="ledger" hidden>
+      <h2>Pay attention&hellip;</h2>
+      <p id="narration-text" class="story"></p>
+      <div class="timer-track"><div id="narration-timer" class="timer-fill"></div></div>
+    </section>
+
+    <!-- Question: candles are out, memory is tested -->
+    <section id="question-view" class="ledger dark-room" hidden>
+      <p id="question-count" class="note"></p>
+      <h2 id="question-text"></h2>
+      <div id="options" class="options"></div>
+      <p id="locked-note" class="note" hidden>Answer locked. Eyes on the others&hellip;</p>
+      <div class="timer-track"><div id="question-timer" class="timer-fill"></div></div>
+    </section>
+
+    <!-- Results: the scoreboard -->
+    <section id="results-view" class="ledger" hidden>
+      <h2>Last Orders &mdash; results</h2>
+      <ol id="score-list"></ol>
+      <button id="again-btn" hidden>Another round</button>
+      <p class="note" id="results-note"></p>
     </section>
   </main>
 

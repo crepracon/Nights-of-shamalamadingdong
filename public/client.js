@@ -1,12 +1,16 @@
 // client.js — the thin display layer (rule 2).
-// It sends inputs to the server and draws whatever state comes back.
-// No game rules live here.
+// Sends inputs, draws whatever phase the server broadcasts. No rules here.
 
 const socket = io();
 
-const joinView = document.getElementById("join-view");
-const lobbyView = document.getElementById("lobby-view");
-const gameView = document.getElementById("game-view");
+const views = {
+  join: document.getElementById("join-view"),
+  lobby: document.getElementById("lobby-view"),
+  narration: document.getElementById("narration-view"),
+  question: document.getElementById("question-view"),
+  results: document.getElementById("results-view"),
+};
+
 const nameInput = document.getElementById("name-input");
 const joinBtn = document.getElementById("join-btn");
 const joinError = document.getElementById("join-error");
@@ -14,49 +18,68 @@ const playerList = document.getElementById("player-list");
 const waitNote = document.getElementById("wait-note");
 const startBtn = document.getElementById("start-btn");
 const lobbyError = document.getElementById("lobby-error");
+const narrationText = document.getElementById("narration-text");
+const narrationTimer = document.getElementById("narration-timer");
+const questionCount = document.getElementById("question-count");
+const questionText = document.getElementById("question-text");
+const optionsBox = document.getElementById("options");
+const lockedNote = document.getElementById("locked-note");
+const questionTimer = document.getElementById("question-timer");
+const scoreList = document.getElementById("score-list");
+const againBtn = document.getElementById("again-btn");
+const resultsNote = document.getElementById("results-note");
 
 let myName = null;
+let iAmHost = false;
+let timerLoop = null;
 
-function show(el, visible) {
-  el.hidden = !visible;
+function showOnly(name) {
+  for (const [key, el] of Object.entries(views)) el.hidden = key !== name;
 }
 
+// Animate a timer bar toward a server deadline.
+function runTimer(fillEl, endsAt) {
+  clearInterval(timerLoop);
+  const total = endsAt - Date.now();
+  timerLoop = setInterval(() => {
+    const left = Math.max(0, endsAt - Date.now());
+    fillEl.style.transform = `scaleX(${total > 0 ? left / total : 0})`;
+    if (left <= 0) clearInterval(timerLoop);
+  }, 100);
+}
+
+// ---- Join ----
 joinBtn.addEventListener("click", join);
 nameInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") join();
 });
 
 function join() {
-  show(joinError, false);
+  joinError.hidden = true;
   socket.emit("join", nameInput.value);
 }
 
 socket.on("joinError", (message) => {
   joinError.textContent = message;
-  show(joinError, true);
-});
-
-socket.on("error_message", (message) => {
-  lobbyError.textContent = message;
-  show(lobbyError, true);
+  joinError.hidden = false;
 });
 
 socket.on("joined", ({ name }) => {
   myName = name;
-  show(joinView, false);
-  show(lobbyView, true);
+  showOnly("lobby");
 });
 
-socket.on("lobby", (state) => {
-  if (state.started) {
-    show(lobbyView, false);
-    show(gameView, true);
-    return;
-  }
+socket.on("error_message", (message) => {
+  lobbyError.textContent = message;
+  lobbyError.hidden = false;
+});
 
-  // Redraw the guest list from server state.
+// ---- Lobby ----
+socket.on("lobby", (state) => {
+  if (state.started) return; // phase events drive the screens now
+
   playerList.innerHTML = "";
-  let iAmHost = false;
+  iAmHost = false;
   for (const player of state.players) {
     const li = document.createElement("li");
     li.textContent = player.name;
@@ -71,14 +94,66 @@ socket.on("lobby", (state) => {
   }
 
   const canStart = iAmHost && state.canStart;
-  show(startBtn, canStart);
-  show(waitNote, !canStart);
+  startBtn.hidden = !canStart;
+  waitNote.hidden = canStart;
   waitNote.textContent = iAmHost
     ? "Waiting for more travelers to arrive…"
     : "Waiting for the innkeeper to open the taps…";
 });
 
 startBtn.addEventListener("click", () => {
-  show(lobbyError, false);
+  lobbyError.hidden = true;
   socket.emit("start");
 });
+
+// ---- Game phases (server-driven) ----
+socket.on("phase", (phase) => {
+  if (phase.name === "narration") {
+    narrationText.textContent = phase.narration;
+    showOnly("narration");
+    runTimer(narrationTimer, phase.endsAt);
+  }
+
+  if (phase.name === "question") {
+    questionCount.textContent = `Question ${phase.index + 1} of ${phase.total}`;
+    questionText.textContent = phase.question;
+    lockedNote.hidden = true;
+    optionsBox.innerHTML = "";
+    phase.options.forEach((option, optionIndex) => {
+      const btn = document.createElement("button");
+      btn.textContent = option;
+      btn.addEventListener("click", () => {
+        socket.emit("answer", { questionIndex: phase.index, optionIndex });
+        btn.classList.add("chosen");
+        for (const b of optionsBox.querySelectorAll("button")) b.disabled = true;
+      });
+      optionsBox.appendChild(btn);
+    });
+    showOnly("question");
+    runTimer(questionTimer, phase.endsAt);
+  }
+
+  if (phase.name === "results") {
+    scoreList.innerHTML = "";
+    for (const row of phase.ranked) {
+      const li = document.createElement("li");
+      li.textContent = `${row.name} — ${row.correct}/${row.of} correct`;
+      const pts = document.createElement("span");
+      pts.className = "pts";
+      pts.textContent = `+${row.points}`;
+      li.appendChild(pts);
+      scoreList.appendChild(li);
+    }
+    againBtn.hidden = !iAmHost;
+    resultsNote.textContent = iAmHost
+      ? ""
+      : "Waiting for the innkeeper to pour another…";
+    showOnly("results");
+  }
+});
+
+socket.on("answerLocked", () => {
+  lockedNote.hidden = false;
+});
+
+againBtn.addEventListener("click", () => socket.emit("playAgain"));
