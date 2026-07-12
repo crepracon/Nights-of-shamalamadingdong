@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nights of Shabalabadingdong</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="hall">
+    <header class="sign">
+      <h1>Nights of<br />Shabalabadingdong</h1>
+      <p class="sub">The Rusty Horse Inn &mdash; travelers welcome, mostly</p>
+    </header>
+
+    <!-- Join: sign the guest ledger -->
+    <section id="join-view" class="ledger">
+      <h2>Sign the ledger</h2>
+      <div class="signing">
+        <input
+          id="name-input"
+          type="text"
+          maxlength="20"
+          placeholder="Your name, traveler"
+          autocomplete="off"
+        />
+        <button id="join-btn">Enter the inn</button>
+      </div>
+      <p id="join-error" class="error" hidden></p>
+    </section>
+
+    <!-- Lobby: who's in the room -->
+    <section id="lobby-view" class="ledger" hidden>
+      <h2>Tonight's guests</h2>
+      <ul id="player-list"></ul>
+      <p id="wait-note" class="note">Waiting for the innkeeper to open the taps&hellip;</p>
+      <button id="start-btn" hidden>Begin the night</button>
+      <p id="lobby-error" class="error" hidden></p>
+    </section>
+
+    <!-- Started: placeholder until the game loop arrives -->
+    <section id="game-view" class="ledger" hidden>
+      <h2>The night begins&hellip;</h2>
+      <p class="note">The doors are barred. The story starts here (next build).</p>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/client.js"></script>
+</body>
+</html>

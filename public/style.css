@@ -1,0 +1,127 @@
+/* Tavern at night: dark wood, candlelight, one parchment ledger. */
+
+:root {
+  --wood: #1a120c;
+  --wood-grain: #241a10;
+  --candle: #e8a33d;
+  --parchment: #f0e2c4;
+  --ink: #2e2318;
+  --ember: #b8452e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 50% 0%, var(--wood-grain), var(--wood) 70%);
+  color: var(--parchment);
+  font-family: Georgia, "Times New Roman", serif;
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+}
+
+.hall { width: 100%; max-width: 26rem; }
+
+.sign { text-align: center; margin-bottom: 1.75rem; }
+
+.sign h1 {
+  font-family: "IM Fell English SC", Georgia, serif;
+  font-weight: 400;
+  font-size: 2rem;
+  line-height: 1.1;
+  margin: 0 0 0.4rem;
+  color: var(--candle);
+  text-shadow: 0 0 24px rgba(232, 163, 61, 0.25);
+}
+
+.sub {
+  margin: 0;
+  font-style: italic;
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.ledger {
+  background: var(--parchment);
+  color: var(--ink);
+  border-radius: 4px;
+  padding: 1.25rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.ledger h2 {
+  font-family: "IM Fell English SC", Georgia, serif;
+  font-weight: 400;
+  margin: 0 0 0.9rem;
+  font-size: 1.3rem;
+  border-bottom: 1px solid rgba(46, 35, 24, 0.25);
+  padding-bottom: 0.5rem;
+}
+
+.signing { display: flex; flex-direction: column; gap: 0.6rem; }
+
+input[type="text"] {
+  font: inherit;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(46, 35, 24, 0.4);
+  border-radius: 3px;
+  background: rgba(255, 252, 245, 0.7);
+  color: var(--ink);
+}
+
+input[type="text"]:focus {
+  outline: 2px solid var(--candle);
+  outline-offset: 1px;
+}
+
+button {
+  font: inherit;
+  font-family: "IM Fell English SC", Georgia, serif;
+  font-size: 1.05rem;
+  padding: 0.6rem 0.75rem;
+  border: none;
+  border-radius: 3px;
+  background: var(--ember);
+  color: var(--parchment);
+  cursor: pointer;
+}
+
+button:hover { filter: brightness(1.1); }
+button:focus-visible { outline: 2px solid var(--candle); outline-offset: 2px; }
+
+#player-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+}
+
+#player-list li {
+  padding: 0.45rem 0.2rem;
+  border-bottom: 1px dashed rgba(46, 35, 24, 0.25);
+  font-size: 1.05rem;
+}
+
+#player-list li .host-mark {
+  color: var(--ember);
+  font-size: 0.8rem;
+  margin-left: 0.4rem;
+  font-style: italic;
+}
+
+.note { font-style: italic; font-size: 0.9rem; opacity: 0.75; }
+
+.error {
+  color: var(--ember);
+  font-size: 0.9rem;
+  margin: 0.6rem 0 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ledger { animation: settle 0.35s ease-out; }
+  @keyframes settle {
+    from { transform: translateY(6px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+}
