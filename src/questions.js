@@ -10,9 +10,11 @@
 //   { tag, question, options: [4 shuffled choices], correctAnswer }
 //
 // Rules:
-//   - Only tags that have a question text get asked.
-//   - If a tag was picked more than once (patron, patron_2...), only the FIRST
-//     pick is asked about — repeat picks would make questions ambiguous.
+//   - Only picks that have a question text get asked. Repeat picks
+//     (patron_2, patron_3...) CAN be asked if the content defines a question
+//     for them — their wrong answers come from the base list ("patron").
+//     The question text must make clear WHICH one it means
+//     ("Who lost at dice?" vs "Who was by the hearth?").
 //   - Each question gets 4 options: the right answer + 3 wrong ones drawn
 //     from the same word list, shuffled.
 
@@ -20,10 +22,12 @@ export function generateQuestions(picks, wordLists, questionTexts, rng = Math.ra
   const questions = [];
 
   for (const [tag, questionText] of Object.entries(questionTexts)) {
-    const correctAnswer = picks[tag]; // numbered keys (tag_2...) are skipped on purpose
+    const correctAnswer = picks[tag];
     if (correctAnswer === undefined) continue;
 
-    const list = wordLists[tag] || [];
+    // "patron_2" draws its wrong answers from the "patron" list.
+    const baseTag = tag.replace(/_\d+$/, "");
+    const list = wordLists[baseTag] || [];
     const distractors = shuffle(
       list.filter((w) => w !== correctAnswer),
       rng

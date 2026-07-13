@@ -26,9 +26,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
 const PORT = process.env.PORT || 3000;
 
-const NARRATION_MS = 20000; // read the story
-const QUESTION_MS = 15000;  // answer each question
-const RESULTS_HOLD_MS = 1500; // small beat before results land
+// FAST_MODE=1 runs every clock at 10x speed — for testing only.
+const SPEED = process.env.FAST_MODE === "1" ? 10 : 1;
+
+const QUESTION_MS = 15000 / SPEED;  // answer each question
+const RESULTS_HOLD_MS = 1500 / SPEED; // small beat before results land
+const RESULTS_SHOW_MS = 8000 / SPEED; // scoreboard stays up this long
+const GATHERING_MS = (5 * 60 * 1000) / SPEED; // table talk back at the inn (the big dial)
+
+// Longer stories earn more reading time: ~350ms per word, clamped 15-60s.
+function narrationTime(text) {
+  const words = text.split(/\s+/).length;
+  return Math.min(60000, Math.max(15000, words * 350)) / SPEED;
+}
 
 // Only these files are ever served.
 const FILES = {
@@ -70,12 +80,13 @@ function startRound() {
     lobby.players.map((p) => p.id),
     tavern
   );
+  const readingMs = narrationTime(round.narration);
   io.emit("phase", {
     name: "narration",
     narration: round.narration,
-    endsAt: Date.now() + NARRATION_MS,
+    endsAt: Date.now() + readingMs,
   });
-  setPhaseTimer(NARRATION_MS, openNextQuestion);
+  setPhaseTimer(readingMs, openNextQuestion);
 }
 
 function openNextQuestion() {
@@ -108,6 +119,16 @@ function showResults() {
     rank: r.rank,
   }));
   io.emit("phase", { name: "results", ranked });
+  setPhaseTimer(RESULTS_SHOW_MS, startGathering);
+}
+
+// Back at the inn: candles relit, accusations fly, the clock runs.
+function startGathering() {
+  io.emit("phase", {
+    name: "gathering",
+    endsAt: Date.now() + GATHERING_MS,
+  });
+  setPhaseTimer(GATHERING_MS, startRound);
 }
 
 io.on("connection", (socket) => {
@@ -147,8 +168,8 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Host can run another round with the same crowd (great for testing).
-  socket.on("playAgain", () => {
+  // The innkeeper rings the bell: gathering ends now, next round begins.
+  socket.on("ringBell", () => {
     const requester = lobby.players.find((p) => p.id === socket.id);
     if (!requester?.isHost || !lobby.started) return;
     startRound();

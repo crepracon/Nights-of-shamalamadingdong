@@ -9,6 +9,7 @@ const views = {
   narration: document.getElementById("narration-view"),
   question: document.getElementById("question-view"),
   results: document.getElementById("results-view"),
+  gathering: document.getElementById("gathering-view"),
 };
 
 const nameInput = document.getElementById("name-input");
@@ -26,15 +27,28 @@ const optionsBox = document.getElementById("options");
 const lockedNote = document.getElementById("locked-note");
 const questionTimer = document.getElementById("question-timer");
 const scoreList = document.getElementById("score-list");
-const againBtn = document.getElementById("again-btn");
-const resultsNote = document.getElementById("results-note");
+const gatheringTimer = document.getElementById("gathering-timer");
+const bellBtn = document.getElementById("bell-btn");
+const gatheringNote = document.getElementById("gathering-note");
 
 let myName = null;
 let iAmHost = false;
 let timerLoop = null;
 
 function showOnly(name) {
-  for (const [key, el] of Object.entries(views)) el.hidden = key !== name;
+  const current = Object.entries(views).find(([, el]) => !el.hidden);
+  const reveal = () => {
+    for (const [key, el] of Object.entries(views)) {
+      el.hidden = key !== name;
+      el.classList.remove("fade-out");
+    }
+  };
+  if (current && current[0] !== name) {
+    current[1].classList.add("fade-out");
+    setTimeout(reveal, 550); // matches the CSS fade
+  } else {
+    reveal();
+  }
 }
 
 // Animate a timer bar toward a server deadline.
@@ -144,11 +158,16 @@ socket.on("phase", (phase) => {
       li.appendChild(pts);
       scoreList.appendChild(li);
     }
-    againBtn.hidden = !iAmHost;
-    resultsNote.textContent = iAmHost
-      ? ""
-      : "Waiting for the innkeeper to pour another…";
     showOnly("results");
+  }
+
+  if (phase.name === "gathering") {
+    bellBtn.hidden = !iAmHost;
+    gatheringNote.textContent = iAmHost
+      ? ""
+      : "The innkeeper will ring the bell when it's time…";
+    showOnly("gathering");
+    runTimer(gatheringTimer, phase.endsAt);
   }
 });
 
@@ -156,4 +175,4 @@ socket.on("answerLocked", () => {
   lockedNote.hidden = false;
 });
 
-againBtn.addEventListener("click", () => socket.emit("playAgain"));
+bellBtn.addEventListener("click", () => socket.emit("ringBell"));
