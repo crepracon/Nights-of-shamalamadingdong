@@ -12,13 +12,8 @@ import {
   startGame,
   publicState,
 } from "./src/lobby.js";
-import {
-  createRound,
-  advance,
-  recordAnswer,
-  everyoneAnswered,
-  results,
-} from "./src/round.js";
+import { createBox, drawGame } from "./src/box.js";
+import { lastOrders } from "./src/games/last-orders.js";
 import {
   createStandings,
   applyRoundPoints,
@@ -26,7 +21,8 @@ import {
   total,
 } from "./src/scores.js";
 import { createCardState, awardByRank, playCard, consumeTraps, CARDS } from "./src/cards.js";
-import { tavern } from "./src/content/tavern.js";
+
+const box = createBox([lastOrders]);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -35,16 +31,9 @@ const PORT = process.env.PORT || 3000;
 // FAST_MODE=1 runs every clock at 10x speed — for testing only.
 const SPEED = process.env.FAST_MODE === "1" ? 10 : 1;
 
-const QUESTION_MS = 15000 / SPEED;
 const RESULTS_HOLD_MS = 1500 / SPEED;
 const RESULTS_SHOW_MS = 8000 / SPEED;
 const GATHERING_MS = (5 * 60 * 1000) / SPEED; // the big dial
-
-// Longer stories earn more reading time: ~350ms per word, clamped 15-60s.
-function narrationTime(text) {
-  const words = text.split(/\s+/).length;
-  return Math.min(60000, Math.max(15000, words * 350)) / SPEED;
-}
 
 const FILES = {
   "/": ["index.html", "text/html"],
@@ -69,9 +58,12 @@ const io = new Server(httpServer);
 const lobby = createLobby();
 const standings = createStandings();
 let cardState = null;
-let round = null;
+let game = null; // the mini-game drawn from the box
+let gameState = null;
+let lastGameId = null;
+let currentPhase = null; // the game's current phase descriptor
 let phaseName = "lobby";
-let questionOpenedAt = null;
+let phaseOpenedAt = null;
 let phaseTimer = null;
 let roundPenalties = {}; // playerId -> ms lost per question (Cursed Dice)
 
@@ -109,52 +101,52 @@ function startRound() {
     }
   }
 
-  round = createRound(
-    lobby.players.map((p) => p.id),
-    tavern
-  );
-  phaseName = "narration";
-  const readingMs = narrationTime(round.narration);
-  io.emit("phase", {
-    name: "narration",
-    narration: round.narration,
-    endsAt: Date.now() + readingMs,
-  });
-  setPhaseTimer(readingMs, openNextQuestion);
+  game = drawGame(box, lastGameId);
+  lastGameId = game.id;
+  gameState = game.create(lobby.players.map((p) => p.id));
+  runPhase();
 }
 
-function openNextQuestion() {
-  advance(round);
-  if (round.phase === "results") {
+// The generic engine loop: broadcast the game's current phase, run its
+// clock, advance when time is up or everyone has acted.
+function runPhase() {
+  currentPhase = game.phase(gameState);
+  if (!currentPhase) {
     showResults();
     return;
   }
-  phaseName = "question";
-  const q = round.questions[round.currentQuestion];
-  questionOpenedAt = Date.now();
+  phaseName = currentPhase.kind;
+  phaseOpenedAt = Date.now();
+  const durationMs = currentPhase.durationMs / SPEED;
 
-  // Cursed players get a personally shorter clock.
+  // Cursed players get a personally shorter clock on input phases.
   for (const player of lobby.players) {
     const socket = io.sockets.sockets.get(player.id);
     if (!socket) continue;
-    const penalty = roundPenalties[player.id] ?? 0;
+    const penalty = currentPhase.acceptsInput
+      ? roundPenalties[player.id] ?? 0
+      : 0;
     socket.emit("phase", {
-      name: "question",
-      index: round.currentQuestion,
-      total: round.questions.length,
-      question: q.question,
-      options: q.options, // correctAnswer stays server-side
-      endsAt: questionOpenedAt + QUESTION_MS - penalty,
+      name: currentPhase.kind, // "story" or "choices"
+      gameName: game.name,
+      key: currentPhase.key,
+      ...currentPhase.broadcast,
+      endsAt: phaseOpenedAt + durationMs - penalty,
       cursed: penalty > 0,
     });
   }
-  setPhaseTimer(QUESTION_MS, openNextQuestion);
+  setPhaseTimer(durationMs, advancePhase);
+}
+
+function advancePhase() {
+  game.advance(gameState);
+  runPhase();
 }
 
 function showResults() {
   clearTimeout(phaseTimer);
   phaseName = "results";
-  const ranked = results(round);
+  const ranked = game.results(gameState);
   applyRoundPoints(standings, ranked);
 
   // Rank prizes: winner draws a rare, runner-up a common.
@@ -170,13 +162,13 @@ function showResults() {
 
   io.emit("phase", {
     name: "results",
-    ranked: ranked.map((r) => ({
+    gameName: game.name,
+    ranked: ranked.map((r, i) => ({
       name: nameOf(r.playerId),
-      correct: r.correct,
-      of: round.questions.length,
+      label: r.label,
       points: r.points,
       totalPoints: total(standings, r.playerId),
-      rank: r.rank,
+      rank: i + 1,
     })),
   });
   setPhaseTimer(RESULTS_SHOW_MS, startGathering);
@@ -215,15 +207,19 @@ io.on("connection", (socket) => {
     setPhaseTimer(RESULTS_HOLD_MS, startRound);
   });
 
-  socket.on("answer", ({ questionIndex, optionIndex }) => {
-    if (!round) return;
-    const timeMs = Date.now() - questionOpenedAt;
-    const allowed = QUESTION_MS - (roundPenalties[socket.id] ?? 0);
+  socket.on("input", ({ key, choice }) => {
+    if (!game || !currentPhase?.acceptsInput || key !== currentPhase.key) return;
+    const timeMs = Date.now() - phaseOpenedAt;
+    const allowed =
+      currentPhase.durationMs / SPEED - (roundPenalties[socket.id] ?? 0);
     if (timeMs > allowed) return; // the cursed clock has run out — expected failure
-    const result = recordAnswer(round, socket.id, questionIndex, optionIndex, timeMs);
+    const result = game.input(gameState, socket.id, choice, timeMs);
     if (result.ok) {
-      socket.emit("answerLocked", { questionIndex });
-      if (everyoneAnswered(round)) openNextQuestion();
+      socket.emit("inputLocked", { key });
+      if (game.everyoneActed(gameState)) {
+        clearTimeout(phaseTimer);
+        advancePhase();
+      }
     }
   });
 

@@ -6,8 +6,8 @@ const socket = io();
 const views = {
   join: document.getElementById("join-view"),
   lobby: document.getElementById("lobby-view"),
-  narration: document.getElementById("narration-view"),
-  question: document.getElementById("question-view"),
+  story: document.getElementById("story-view"),
+  choices: document.getElementById("choices-view"),
   results: document.getElementById("results-view"),
   gathering: document.getElementById("gathering-view"),
 };
@@ -19,13 +19,15 @@ const playerList = document.getElementById("player-list");
 const waitNote = document.getElementById("wait-note");
 const startBtn = document.getElementById("start-btn");
 const lobbyError = document.getElementById("lobby-error");
-const narrationText = document.getElementById("narration-text");
-const narrationTimer = document.getElementById("narration-timer");
-const questionCount = document.getElementById("question-count");
-const questionText = document.getElementById("question-text");
+const storyGameName = document.getElementById("story-game-name");
+const storyText = document.getElementById("story-text");
+const storyTimer = document.getElementById("story-timer");
+const choicesProgress = document.getElementById("choices-progress");
+const choicesPrompt = document.getElementById("choices-prompt");
+const resultsTitle = document.getElementById("results-title");
 const optionsBox = document.getElementById("options");
 const lockedNote = document.getElementById("locked-note");
-const questionTimer = document.getElementById("question-timer");
+const choicesTimer = document.getElementById("choices-timer");
 const scoreList = document.getElementById("score-list");
 const gatheringTimer = document.getElementById("gathering-timer");
 const feedBox = document.getElementById("feed");
@@ -128,38 +130,40 @@ startBtn.addEventListener("click", () => {
 
 // ---- Game phases (server-driven) ----
 socket.on("phase", (phase) => {
-  if (phase.name === "narration") {
-    narrationText.textContent = phase.narration;
-    showOnly("narration");
-    runTimer(narrationTimer, phase.endsAt);
+  if (phase.name === "story") {
+    storyGameName.textContent = phase.gameName ?? "";
+    storyText.textContent = phase.text;
+    showOnly("story");
+    runTimer(storyTimer, phase.endsAt);
   }
 
-  if (phase.name === "question") {
-    questionCount.textContent =
-      `Question ${phase.index + 1} of ${phase.total}` +
+  if (phase.name === "choices") {
+    choicesProgress.textContent =
+      (phase.progress ?? "") +
       (phase.cursed ? " — your clock runs short. Cursed dice…" : "");
-    questionText.textContent = phase.question;
+    choicesPrompt.textContent = phase.prompt;
     lockedNote.hidden = true;
     optionsBox.innerHTML = "";
-    phase.options.forEach((option, optionIndex) => {
+    phase.options.forEach((option, choice) => {
       const btn = document.createElement("button");
       btn.textContent = option;
       btn.addEventListener("click", () => {
-        socket.emit("answer", { questionIndex: phase.index, optionIndex });
+        socket.emit("input", { key: phase.key, choice });
         btn.classList.add("chosen");
         for (const b of optionsBox.querySelectorAll("button")) b.disabled = true;
       });
       optionsBox.appendChild(btn);
     });
-    showOnly("question");
-    runTimer(questionTimer, phase.endsAt);
+    showOnly("choices");
+    runTimer(choicesTimer, phase.endsAt);
   }
 
   if (phase.name === "results") {
+    resultsTitle.textContent = `${phase.gameName ?? ""} — results`;
     scoreList.innerHTML = "";
     for (const row of phase.ranked) {
       const li = document.createElement("li");
-      li.textContent = `${row.name} — ${row.correct}/${row.of} correct`;
+      li.textContent = `${row.name} — ${row.label}`;
       const pts = document.createElement("span");
       pts.className = "pts";
       pts.textContent = `+${row.points} (${row.totalPoints})`;
@@ -180,7 +184,7 @@ socket.on("phase", (phase) => {
   }
 });
 
-socket.on("answerLocked", () => {
+socket.on("inputLocked", () => {
   lockedNote.hidden = false;
 });
 

@@ -35,25 +35,25 @@
       <p id="lobby-error" class="error" hidden></p>
     </section>
 
-    <!-- Narration: the story unfolds, then the candles go out -->
-    <section id="narration-view" class="ledger" hidden>
-      <h2>Pay attention&hellip;</h2>
-      <p id="narration-text" class="story"></p>
-      <div class="timer-track"><div id="narration-timer" class="timer-fill"></div></div>
+    <!-- Story: a mini-game sets its scene -->
+    <section id="story-view" class="ledger" hidden>
+      <h2 id="story-game-name">&hellip;</h2>
+      <p id="story-text" class="story"></p>
+      <div class="timer-track"><div id="story-timer" class="timer-fill"></div></div>
     </section>
 
-    <!-- Question: candles are out, memory is tested -->
-    <section id="question-view" class="ledger dark-room" hidden>
-      <p id="question-count" class="note"></p>
-      <h2 id="question-text"></h2>
+    <!-- Choices: a mini-game asks for a decision -->
+    <section id="choices-view" class="ledger dark-room" hidden>
+      <p id="choices-progress" class="note"></p>
+      <h2 id="choices-prompt"></h2>
       <div id="options" class="options"></div>
-      <p id="locked-note" class="note" hidden>Answer locked. Eyes on the others&hellip;</p>
-      <div class="timer-track"><div id="question-timer" class="timer-fill"></div></div>
+      <p id="locked-note" class="note" hidden>Locked in. Eyes on the others&hellip;</p>
+      <div class="timer-track"><div id="choices-timer" class="timer-fill"></div></div>
     </section>
 
     <!-- Results: the scoreboard -->
     <section id="results-view" class="ledger" hidden>
-      <h2>Last Orders &mdash; results</h2>
+      <h2 id="results-title">Results</h2>
       <ol id="score-list"></ol>
       <p class="note">The candles are being relit&hellip;</p>
     </section>
