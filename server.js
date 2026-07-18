@@ -15,6 +15,7 @@ import {
 import { createBox, drawGame } from "./src/box.js";
 import { lastOrders } from "./src/games/last-orders.js";
 import { dicePot } from "./src/games/dice-pot.js";
+import { smugglersBoxes } from "./src/games/smugglers-boxes.js";
 import {
   createStandings,
   applyRoundPoints,
@@ -23,7 +24,7 @@ import {
 } from "./src/scores.js";
 import { createCardState, awardByRank, playCard, consumeTraps, CARDS } from "./src/cards.js";
 
-const box = createBox([lastOrders, dicePot]);
+const box = createBox([lastOrders, dicePot, smugglersBoxes]);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");

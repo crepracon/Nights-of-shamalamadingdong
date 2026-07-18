@@ -19,14 +19,14 @@ a.on("phase", p => {
   if (p.name === "story") log("STORY (" + p.gameName + ")");
   if (p.name === "choices") {
     gamesSeen.add(p.gameName);
-    if (p.prompt && p.gameName === "The Dice Pot") log("DICE prompt for A:", p.prompt, "|", p.table);
+    if (p.prompt && p.gameName !== "Last Orders") log(p.gameName, "prompt for A:", p.prompt, p.table ? "| " + p.table : "");
     if (p.cursed) log("A is CURSED on", p.key);
     setTimeout(() => a.emit("input", { key: p.key, choice: 0 }), 150);
   }
   if (p.name === "results") {
     resultsSeen++;
     log("RESULTS (" + p.gameName + "):", p.ranked.map(r => r.name + " " + r.label + " +" + r.points + " (total " + r.totalPoints + ")").join("  "));
-    if (gamesSeen.size >= 2) { log("BOX ALTERNATION VERIFIED — both games played"); process.exit(0); }
+    if (gamesSeen.size >= 3) { log("BOX VERIFIED — all three games played"); process.exit(0); }
   }
   if (p.name === "gathering") {
     log("GATHERING. A holds:", aHand.map(c => c.name).join(", ") || "nothing");
