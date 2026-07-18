@@ -212,3 +212,36 @@ button:focus-visible { outline: 2px solid var(--candle); outline-offset: 2px; }
 .bell { margin-top: 1rem; width: 100%; }
 
 #gathering-view .timer-track { margin: 1rem 0 0.25rem; }
+
+/* --- The gathering: feed & hand --- */
+
+.feed {
+  background: rgba(46, 35, 24, 0.07);
+  border-left: 3px solid var(--candle);
+  padding: 0.5rem 0.75rem;
+  margin: 0.75rem 0;
+  min-height: 1.5rem;
+  max-height: 9rem;
+  overflow-y: auto;
+  font-size: 0.92rem;
+}
+
+.feed p { margin: 0.3rem 0; }
+.feed .private { color: var(--ember); font-style: italic; }
+
+.hand-title {
+  font-family: "IM Fell English SC", Georgia, serif;
+  font-weight: 400;
+  margin: 0.75rem 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+#hand button, #target-options button {
+  background: rgba(184, 69, 46, 0.1);
+  color: var(--ink);
+  border: 1px solid rgba(184, 69, 46, 0.45);
+}
+
+#hand button b { display: block; font-family: "IM Fell English SC", Georgia, serif; }
+#hand button small { opacity: 0.8; }
+#hand .empty-hand { font-style: italic; opacity: 0.6; font-size: 0.9rem; }

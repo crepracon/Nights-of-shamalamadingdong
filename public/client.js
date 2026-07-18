@@ -28,11 +28,16 @@ const lockedNote = document.getElementById("locked-note");
 const questionTimer = document.getElementById("question-timer");
 const scoreList = document.getElementById("score-list");
 const gatheringTimer = document.getElementById("gathering-timer");
+const feedBox = document.getElementById("feed");
+const handBox = document.getElementById("hand");
+const targetPick = document.getElementById("target-pick");
+const targetOptions = document.getElementById("target-options");
 const bellBtn = document.getElementById("bell-btn");
 const gatheringNote = document.getElementById("gathering-note");
 
 let myName = null;
 let iAmHost = false;
+let travelers = []; // everyone's names, for the target picker
 let timerLoop = null;
 
 function showOnly(name) {
@@ -94,6 +99,7 @@ socket.on("lobby", (state) => {
 
   playerList.innerHTML = "";
   iAmHost = false;
+  travelers = state.players.map((p) => p.name);
   for (const player of state.players) {
     const li = document.createElement("li");
     li.textContent = player.name;
@@ -129,7 +135,9 @@ socket.on("phase", (phase) => {
   }
 
   if (phase.name === "question") {
-    questionCount.textContent = `Question ${phase.index + 1} of ${phase.total}`;
+    questionCount.textContent =
+      `Question ${phase.index + 1} of ${phase.total}` +
+      (phase.cursed ? " — your clock runs short. Cursed dice…" : "");
     questionText.textContent = phase.question;
     lockedNote.hidden = true;
     optionsBox.innerHTML = "";
@@ -154,7 +162,7 @@ socket.on("phase", (phase) => {
       li.textContent = `${row.name} — ${row.correct}/${row.of} correct`;
       const pts = document.createElement("span");
       pts.className = "pts";
-      pts.textContent = `+${row.points}`;
+      pts.textContent = `+${row.points} (${row.totalPoints})`;
       li.appendChild(pts);
       scoreList.appendChild(li);
     }
@@ -162,6 +170,7 @@ socket.on("phase", (phase) => {
   }
 
   if (phase.name === "gathering") {
+    targetPick.hidden = true;
     bellBtn.hidden = !iAmHost;
     gatheringNote.textContent = iAmHost
       ? ""
@@ -176,3 +185,61 @@ socket.on("answerLocked", () => {
 });
 
 bellBtn.addEventListener("click", () => socket.emit("ringBell"));
+
+// ---- Cards ----
+function addFeed(text, isPrivate = false) {
+  const p = document.createElement("p");
+  p.textContent = text;
+  if (isPrivate) p.className = "private";
+  feedBox.appendChild(p);
+  feedBox.scrollTop = feedBox.scrollHeight;
+}
+
+socket.on("tavernFeed", (message) => addFeed(message));
+socket.on("privateNote", (message) => addFeed(message, true));
+socket.on("cardAwarded", (card) => addFeed(`You won a card: ${card.name} — ${card.description}`, true));
+
+socket.on("hand", (cards) => {
+  handBox.innerHTML = "";
+  if (cards.length === 0) {
+    const span = document.createElement("span");
+    span.className = "empty-hand";
+    span.textContent = "No cards. Win the next game to earn one.";
+    handBox.appendChild(span);
+    return;
+  }
+  for (const card of cards) {
+    const btn = document.createElement("button");
+    const title = document.createElement("b");
+    title.textContent = card.name;
+    const desc = document.createElement("small");
+    desc.textContent = card.description;
+    btn.append(title, desc);
+    btn.addEventListener("click", () => beginPlay(card));
+    handBox.appendChild(btn);
+  }
+});
+
+function beginPlay(card) {
+  if (card.needsText) {
+    const text = window.prompt("What should the note say?");
+    if (text) socket.emit("playCard", { cardId: card.id, text });
+    return;
+  }
+  if (!card.needsTarget) {
+    socket.emit("playCard", { cardId: card.id });
+    return;
+  }
+  // Pick a target from the other travelers
+  targetOptions.innerHTML = "";
+  for (const name of travelers.filter((n) => n !== myName)) {
+    const btn = document.createElement("button");
+    btn.textContent = name;
+    btn.addEventListener("click", () => {
+      targetPick.hidden = true;
+      socket.emit("playCard", { cardId: card.id, targetName: name });
+    });
+    targetOptions.appendChild(btn);
+  }
+  targetPick.hidden = false;
+}
