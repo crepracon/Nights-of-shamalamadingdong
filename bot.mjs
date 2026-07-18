@@ -4,8 +4,9 @@ const t0 = Date.now();
 const log = (...args) => appendFileSync("/tmp/bot.log", ((Date.now()-t0)/1000).toFixed(1) + "s " + args.join(" ") + "\n");
 const a = io("http://localhost:3000");
 const b = io("http://localhost:3000");
-let narrations = 0;
 let aHand = [];
+const gamesSeen = new Set();
+let resultsSeen = 0;
 
 b.on("phase", p => {
   if (p.name === "choices") setTimeout(() => b.emit("input", { key: p.key, choice: 1 }), 300);
@@ -15,16 +16,18 @@ a.on("hand", h => { aHand = h; log("A hand update:", h.map(c => c.name).join(", 
 a.on("cardAwarded", c => log("A won card:", c.name));
 a.on("privateNote", m => log("A private:", m));
 a.on("phase", p => {
-  if (p.name === "story") {
-    narrations++;
-    log("STORY (" + p.gameName + ")", narrations);
-    if (narrations === 2) { log("FULL BOX LOOP VERIFIED"); process.exit(0); }
-  }
+  if (p.name === "story") log("STORY (" + p.gameName + ")");
   if (p.name === "choices") {
+    gamesSeen.add(p.gameName);
+    if (p.prompt && p.gameName === "The Dice Pot") log("DICE prompt for A:", p.prompt, "|", p.table);
     if (p.cursed) log("A is CURSED on", p.key);
     setTimeout(() => a.emit("input", { key: p.key, choice: 0 }), 150);
   }
-  if (p.name === "results") log("RESULTS (" + p.gameName + "):", p.ranked.map(r => r.name + " " + r.label + " +" + r.points + " (total " + r.totalPoints + ")").join("  "));
+  if (p.name === "results") {
+    resultsSeen++;
+    log("RESULTS (" + p.gameName + "):", p.ranked.map(r => r.name + " " + r.label + " +" + r.points + " (total " + r.totalPoints + ")").join("  "));
+    if (gamesSeen.size >= 2) { log("BOX ALTERNATION VERIFIED — both games played"); process.exit(0); }
+  }
   if (p.name === "gathering") {
     log("GATHERING. A holds:", aHand.map(c => c.name).join(", ") || "nothing");
     setTimeout(() => {

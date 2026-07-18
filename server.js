@@ -14,6 +14,7 @@ import {
 } from "./src/lobby.js";
 import { createBox, drawGame } from "./src/box.js";
 import { lastOrders } from "./src/games/last-orders.js";
+import { dicePot } from "./src/games/dice-pot.js";
 import {
   createStandings,
   applyRoundPoints,
@@ -22,7 +23,7 @@ import {
 } from "./src/scores.js";
 import { createCardState, awardByRank, playCard, consumeTraps, CARDS } from "./src/cards.js";
 
-const box = createBox([lastOrders]);
+const box = createBox([lastOrders, dicePot]);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -131,6 +132,7 @@ function runPhase() {
       gameName: game.name,
       key: currentPhase.key,
       ...currentPhase.broadcast,
+      ...(game.personal?.(gameState, player.id) ?? {}),
       endsAt: phaseOpenedAt + durationMs - penalty,
       cursed: penalty > 0,
     });

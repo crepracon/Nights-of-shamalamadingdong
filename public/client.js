@@ -24,6 +24,7 @@ const storyText = document.getElementById("story-text");
 const storyTimer = document.getElementById("story-timer");
 const choicesProgress = document.getElementById("choices-progress");
 const choicesPrompt = document.getElementById("choices-prompt");
+const choicesTable = document.getElementById("choices-table");
 const resultsTitle = document.getElementById("results-title");
 const optionsBox = document.getElementById("options");
 const lockedNote = document.getElementById("locked-note");
@@ -142,6 +143,8 @@ socket.on("phase", (phase) => {
       (phase.progress ?? "") +
       (phase.cursed ? " — your clock runs short. Cursed dice…" : "");
     choicesPrompt.textContent = phase.prompt;
+    choicesTable.hidden = !phase.table;
+    choicesTable.textContent = phase.table ?? "";
     lockedNote.hidden = true;
     optionsBox.innerHTML = "";
     phase.options.forEach((option, choice) => {
