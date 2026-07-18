@@ -3,6 +3,9 @@ import {
   createLobby,
   addPlayer,
   removePlayer,
+  reconnect,
+  markDisconnected,
+  playerByPid,
   startGame,
   canStart,
 } from "../src/lobby.js";
@@ -46,5 +49,49 @@ describe("lobby", () => {
     addPlayer(lobby, "s2", "Guest");
     startGame(lobby, "s1");
     expect(addPlayer(lobby, "s3", "Late").ok).toBe(false);
+  });
+
+  it("mints a stable pid on join and starts connected", () => {
+    const lobby = createLobby();
+    const result = addPlayer(lobby, "sock-1", "Chris");
+    expect(result.ok).toBe(true);
+    expect(result.pid).toBeTruthy();
+    expect(lobby.players[0].pid).toBe(result.pid);
+    expect(lobby.players[0].socketId).toBe("sock-1");
+    expect(lobby.players[0].connected).toBe(true);
+  });
+
+  it("reconnects by token: keeps the seat, rebinds to the new socket", () => {
+    const lobby = createLobby();
+    const { pid } = addPlayer(lobby, "old-sock", "Chris");
+    startGame(lobby, "old-sock"); // pretend we're mid-game (needs 2, but ok for state)
+
+    markDisconnected(lobby, "old-sock");
+    expect(lobby.players[0].connected).toBe(false);
+
+    const result = reconnect(lobby, pid, "new-sock");
+    expect(result.ok).toBe(true);
+    expect(lobby.players).toHaveLength(1); // same seat, not a new one
+    expect(lobby.players[0].socketId).toBe("new-sock");
+    expect(lobby.players[0].connected).toBe(true);
+    expect(playerByPid(lobby, pid).name).toBe("Chris");
+  });
+
+  it("rejects reconnect with an unknown token", () => {
+    const lobby = createLobby();
+    addPlayer(lobby, "s1", "Chris");
+    expect(reconnect(lobby, "not-a-real-token", "s2").ok).toBe(false);
+  });
+
+  it("ignores a stale disconnect from a socket that was already replaced", () => {
+    const lobby = createLobby();
+    const { pid } = addPlayer(lobby, "old-sock", "Chris");
+    reconnect(lobby, pid, "new-sock"); // player now lives on new-sock
+
+    // The old socket's disconnect fires late — it must NOT knock the player
+    // (now on new-sock) offline.
+    markDisconnected(lobby, "old-sock");
+    expect(lobby.players[0].connected).toBe(true);
+    expect(lobby.players[0].socketId).toBe("new-sock");
   });
 });

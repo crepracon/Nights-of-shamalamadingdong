@@ -81,6 +81,35 @@ function runTimer(fillEl, endsAt) {
   }, 100);
 }
 
+// ---- Identity that survives a refresh ----
+// The server files our role, hand, and points under a token it minted when we
+// first joined. We stash it in the browser so a reconnect proves "same player"
+// even though the socket underneath is brand new.
+const TOKEN_KEY = "nights-token";
+
+socket.on("connect", () => {
+  socket.emit("hello", localStorage.getItem(TOKEN_KEY));
+});
+
+socket.on("welcome", ({ token, name, started }) => {
+  if (token) {
+    // Recognised — we already have a seat. Remember who we are; if a game is
+    // running the server will push the current phase to the right screen.
+    myName = name;
+    if (!started) showOnly("lobby");
+  } else {
+    // New here, or our old token expired. Start fresh at the join screen.
+    localStorage.removeItem(TOKEN_KEY);
+    showOnly("join");
+  }
+});
+
+// Restore our secret role after a mid-game reconnect (no wheel re-spin).
+socket.on("roleReminder", (role) => {
+  myRole = role;
+  showBadge();
+});
+
 // ---- Join ----
 joinBtn.addEventListener("click", join);
 nameInput.addEventListener("keydown", (e) => {
@@ -97,8 +126,9 @@ socket.on("joinError", (message) => {
   joinError.hidden = false;
 });
 
-socket.on("joined", ({ name }) => {
+socket.on("joined", ({ name, token }) => {
   myName = name;
+  if (token) localStorage.setItem(TOKEN_KEY, token);
   showOnly("lobby");
 });
 
@@ -109,20 +139,23 @@ socket.on("error_message", (message) => {
 
 // ---- Lobby ----
 socket.on("lobby", (state) => {
+  // Keep these current even mid-game: a host who refreshes still needs the
+  // bell, and the target picker needs the full traveler list.
+  travelers = state.players.map((p) => p.name);
+  iAmHost = state.players.some((p) => p.isHost && p.name === myName);
+
   if (state.started) return; // phase events drive the screens now
 
   playerList.innerHTML = "";
-  iAmHost = false;
-  travelers = state.players.map((p) => p.name);
   for (const player of state.players) {
     const li = document.createElement("li");
     li.textContent = player.name;
+    if (!player.connected) li.classList.add("offline");
     if (player.isHost) {
       const mark = document.createElement("span");
       mark.className = "host-mark";
       mark.textContent = "(innkeeper)";
       li.appendChild(mark);
-      if (player.name === myName) iAmHost = true;
     }
     playerList.appendChild(li);
   }
@@ -144,16 +177,10 @@ startBtn.addEventListener("click", () => {
 socket.on("phase", (phase) => {
   if (phase.name === "roleReveal") {
     myRole = phase.role;
-    roleCard.hidden = true;
-    roleSpinNote.hidden = false;
-    wheel.classList.remove("spinning");
     showOnly("role");
     runTimer(roleTimer, phase.endsAt);
 
-    // Restart the animation, then land on the secret.
-    void wheel.offsetWidth; // forces the browser to replay it
-    wheel.classList.add("spinning");
-    setTimeout(() => {
+    const revealCard = () => {
       roleSpinNote.hidden = true;
       roleName.textContent = myRole.name;
       roleDesc.textContent = myRole.description;
@@ -162,7 +189,20 @@ socket.on("phase", (phase) => {
         myRole.table.map((r) => `${r.count} × ${r.name}`).join(", ");
       roleCard.hidden = false;
       showBadge();
-    }, 4200); // just after the wheel settles
+    };
+
+    if (phase.resumed) {
+      // Reconnected mid-reveal — skip the theatrics, just show the fate.
+      wheel.classList.remove("spinning");
+      revealCard();
+    } else {
+      roleCard.hidden = true;
+      roleSpinNote.hidden = false;
+      wheel.classList.remove("spinning");
+      void wheel.offsetWidth; // forces the browser to replay it
+      wheel.classList.add("spinning");
+      setTimeout(revealCard, 4200); // just after the wheel settles
+    }
   }
 
   if (phase.name === "story") {

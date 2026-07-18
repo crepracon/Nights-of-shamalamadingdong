@@ -13,6 +13,12 @@ npm start
 Then open http://localhost:3000 — on your phone too, if it's on the same
 Wi-Fi (use the computer's local IP instead of localhost).
 
+Set `FAST_MODE=1` to run every clock at 10x speed for quick testing:
+
+```
+FAST_MODE=1 npm start
+```
+
 ## Run the tests
 
 ```
@@ -21,23 +27,35 @@ npm test
 
 ## What exists so far
 
-- **Lobby** — players join with a name; first player in is the host and can
-  start the game with 2+ players.
-- **Core mini-game logic** (not yet wired to the server):
-  - `src/template.js` — fills `[tag]` story templates from word lists and
-    records the picks (the answer key).
-  - `src/questions.js` — turns an answer key into 4-option multiple-choice
-    questions.
-  - `src/scoring.js` — ranks a round's answers, speed breaks ties.
+- **Lobby** — players join with a name; first in is the host ("innkeeper")
+  and starts the game with 2+ players.
+- **Stable identity + reconnect** — each player gets a token saved in their
+  browser. A refresh reconnects to the same seat, role, hand, and points
+  instead of dropping the player. The server keys all state on this token
+  (`pid`), never the throwaway socket id.
+- **Secret roles** — dealt once a night via the Wheel of Fates reveal. You
+  learn only your own fate; everyone else is a guess. (`src/roles.js`)
+- **Three mini-games in the box** — Last Orders, Dice Pot, Smuggler's Boxes.
+  The engine draws one each round through a shared interface. (`src/box.js`,
+  `src/games/`)
+- **Card engine** — trap/trick cards won as rank prizes, played during the
+  post-round gathering. (`src/cards.js`)
+- **Scoreboard** — points persist across rounds; cards can move them.
+  (`src/scores.js`)
 
-## Deploy
+## Deploy (Render, free tier)
 
-Not deployed yet. When it's time: the server is a plain Node app
-(`node server.js`, listens on `PORT` env var or 3000) — fits Render/Railway
-free tiers. Remember: never commit secrets; `.env` is gitignored.
+- Build command: `npm install`
+- Start command: `npm start` (the server reads `PORT` from the environment)
+- Never commit secrets; `.env` is gitignored.
 
 ## Known gaps (on purpose, for now)
 
-- One global lobby; no way to reset to lobby after a game starts
-  (restart the server instead).
-- The "started" screen is a placeholder — the mini-game loop plugs in next.
+- One global lobby; no reset-to-lobby after a game ends (restart the server).
+- Role *powers* aren't implemented yet — roles are assigned and revealed, but
+  don't do anything mechanically.
+- If the **host** disconnects mid-game they keep the crown (so their role and
+  points survive a refresh). If they never return, the gathering phase can
+  only end on its own timer — nobody else can ring the bell.
+- A player who leaves mid-game (rather than refreshing) lingers as a
+  disconnected seat until the game ends.
