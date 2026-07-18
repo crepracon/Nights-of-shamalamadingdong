@@ -245,3 +245,86 @@ button:focus-visible { outline: 2px solid var(--candle); outline-offset: 2px; }
 #hand button b { display: block; font-family: "IM Fell English SC", Georgia, serif; }
 #hand button small { opacity: 0.8; }
 #hand .empty-hand { font-style: italic; opacity: 0.6; font-size: 0.9rem; }
+
+/* ---- The Wheel of Fates ---- */
+
+.wheel-well {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin: 1.25rem 0;
+}
+
+.wheel {
+  width: 11rem;
+  height: 11rem;
+  border-radius: 50%;
+  border: 6px solid var(--ink);
+  box-shadow: 0 0 30px rgba(232, 163, 61, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
+  /* Worn paint: the fates, unlabelled — you can't read your luck off the rim. */
+  background: conic-gradient(
+    var(--ember) 0deg 45deg,
+    var(--ink) 45deg 90deg,
+    var(--candle) 90deg 135deg,
+    var(--ink) 135deg 180deg,
+    var(--ember) 180deg 225deg,
+    var(--ink) 225deg 270deg,
+    var(--candle) 270deg 315deg,
+    var(--ink) 315deg 360deg
+  );
+}
+
+.wheel.spinning { animation: spin 4s cubic-bezier(0.15, 0.85, 0.2, 1) forwards; }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(1109deg); }
+}
+
+.wheel-pointer {
+  position: absolute;
+  top: -0.35rem;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  border-left: 0.55rem solid transparent;
+  border-right: 0.55rem solid transparent;
+  border-top: 1rem solid var(--parchment);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+}
+
+.role-card {
+  border-top: 1px solid rgba(46, 35, 24, 0.25);
+  padding-top: 0.9rem;
+  text-align: center;
+}
+
+.role-card h3 {
+  font-family: "IM Fell English SC", Georgia, serif;
+  font-size: 1.6rem;
+  margin: 0 0 0.4rem;
+  color: var(--ember);
+}
+
+.secret { color: var(--ember); opacity: 0.85; }
+
+.role-badge {
+  margin-top: 0.75rem;
+  background: none;
+  border: 1px solid rgba(240, 226, 196, 0.3);
+  color: var(--parchment);
+  font-family: Georgia, serif;
+  font-size: 0.8rem;
+  font-style: italic;
+  border-radius: 999px;
+  padding: 0.2rem 0.8rem;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.role-badge:hover { opacity: 1; }
+#role-badge-text { margin: 0.4rem 0 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wheel.spinning { animation: none; }
+}

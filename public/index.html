@@ -13,6 +13,8 @@
     <header class="sign">
       <h1>Nights of<br />Shabalabadingdong</h1>
       <p class="sub">The Rusty Horse Inn &mdash; travelers welcome, mostly</p>
+      <button id="role-badge" class="role-badge" hidden>Your fate &#9662;</button>
+      <p id="role-badge-text" class="note secret" hidden></p>
     </header>
 
     <!-- Join: sign the guest ledger -->
@@ -33,6 +35,24 @@
       <p id="wait-note" class="note">Waiting for the innkeeper to open the taps&hellip;</p>
       <button id="start-btn" hidden>Begin the night</button>
       <p id="lobby-error" class="error" hidden></p>
+    </section>
+
+    <!-- Role reveal: the wheel of fates, spun once a night -->
+    <section id="role-view" class="ledger" hidden>
+      <h2>The Wheel of Fates</h2>
+      <p class="note" id="role-spin-note">The innkeeper drags out the old wheel.
+        Its paint is worn where thumbs have pressed. He spins.</p>
+      <div class="wheel-well">
+        <div class="wheel-pointer"></div>
+        <div id="wheel" class="wheel"></div>
+      </div>
+      <div id="role-card" class="role-card" hidden>
+        <h3 id="role-name"></h3>
+        <p id="role-desc" class="story"></p>
+        <p id="role-counts" class="note"></p>
+        <p class="note secret">Tell no one. Or lie about it. That is rather the point.</p>
+      </div>
+      <div class="timer-track"><div id="role-timer" class="timer-fill"></div></div>
     </section>
 
     <!-- Story: a mini-game sets its scene -->

@@ -23,6 +23,7 @@ import {
   total,
 } from "./src/scores.js";
 import { createCardState, awardByRank, playCard, consumeTraps, CARDS } from "./src/cards.js";
+import { assignRoles, knownTo } from "./src/roles.js";
 
 const box = createBox([lastOrders, dicePot, smugglersBoxes]);
 
@@ -34,6 +35,7 @@ const PORT = process.env.PORT || 3000;
 const SPEED = process.env.FAST_MODE === "1" ? 10 : 1;
 
 const RESULTS_HOLD_MS = 1500 / SPEED;
+const ROLE_REVEAL_MS = 12000 / SPEED; // wheel spin + time to read your fate
 const RESULTS_SHOW_MS = 8000 / SPEED;
 const GATHERING_MS = (5 * 60 * 1000) / SPEED; // the big dial
 
@@ -60,6 +62,7 @@ const io = new Server(httpServer);
 const lobby = createLobby();
 const standings = createStandings();
 let cardState = null;
+let roles = null; // playerId -> roleId. PRIVATE. Never broadcast whole.
 let game = null; // the mini-game drawn from the box
 let gameState = null;
 let lastGameId = null;
@@ -91,6 +94,21 @@ function sendHand(playerId) {
 
 function feed(message) {
   io.emit("tavernFeed", message);
+}
+
+// The wheel spins once a night. Each player watches it land on their own
+// secret — same spin, different fate.
+function startRoleReveal() {
+  phaseName = "roleReveal";
+  for (const player of lobby.players) {
+    const socket = io.sockets.sockets.get(player.id);
+    socket?.emit("phase", {
+      name: "roleReveal",
+      role: knownTo(roles, player.id),
+      endsAt: Date.now() + ROLE_REVEAL_MS,
+    });
+  }
+  setPhaseTimer(ROLE_REVEAL_MS, startRound);
 }
 
 function startRound() {
@@ -205,9 +223,11 @@ io.on("connection", (socket) => {
       socket.emit("error_message", result.error);
       return;
     }
-    cardState = createCardState(lobby.players.map((p) => p.id));
+    const playerIds = lobby.players.map((p) => p.id);
+    cardState = createCardState(playerIds);
+    roles = assignRoles(playerIds);
     broadcastLobby();
-    setPhaseTimer(RESULTS_HOLD_MS, startRound);
+    setPhaseTimer(RESULTS_HOLD_MS, startRoleReveal);
   });
 
   socket.on("input", ({ key, choice }) => {

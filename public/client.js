@@ -6,6 +6,7 @@ const socket = io();
 const views = {
   join: document.getElementById("join-view"),
   lobby: document.getElementById("lobby-view"),
+  role: document.getElementById("role-view"),
   story: document.getElementById("story-view"),
   choices: document.getElementById("choices-view"),
   results: document.getElementById("results-view"),
@@ -37,7 +38,17 @@ const targetPick = document.getElementById("target-pick");
 const targetOptions = document.getElementById("target-options");
 const bellBtn = document.getElementById("bell-btn");
 const gatheringNote = document.getElementById("gathering-note");
+const wheel = document.getElementById("wheel");
+const roleCard = document.getElementById("role-card");
+const roleName = document.getElementById("role-name");
+const roleDesc = document.getElementById("role-desc");
+const roleCounts = document.getElementById("role-counts");
+const roleSpinNote = document.getElementById("role-spin-note");
+const roleTimer = document.getElementById("role-timer");
+const roleBadge = document.getElementById("role-badge");
+const roleBadgeText = document.getElementById("role-badge-text");
 
+let myRole = null;
 let myName = null;
 let iAmHost = false;
 let travelers = []; // everyone's names, for the target picker
@@ -131,6 +142,29 @@ startBtn.addEventListener("click", () => {
 
 // ---- Game phases (server-driven) ----
 socket.on("phase", (phase) => {
+  if (phase.name === "roleReveal") {
+    myRole = phase.role;
+    roleCard.hidden = true;
+    roleSpinNote.hidden = false;
+    wheel.classList.remove("spinning");
+    showOnly("role");
+    runTimer(roleTimer, phase.endsAt);
+
+    // Restart the animation, then land on the secret.
+    void wheel.offsetWidth; // forces the browser to replay it
+    wheel.classList.add("spinning");
+    setTimeout(() => {
+      roleSpinNote.hidden = true;
+      roleName.textContent = myRole.name;
+      roleDesc.textContent = myRole.description;
+      roleCounts.textContent =
+        "At this table: " +
+        myRole.table.map((r) => `${r.count} × ${r.name}`).join(", ");
+      roleCard.hidden = false;
+      showBadge();
+    }, 4200); // just after the wheel settles
+  }
+
   if (phase.name === "story") {
     storyGameName.textContent = phase.gameName ?? "";
     storyText.textContent = phase.text;
@@ -189,6 +223,20 @@ socket.on("phase", (phase) => {
 
 socket.on("inputLocked", () => {
   lockedNote.hidden = false;
+});
+
+// The badge stays put all night, but keeps its mouth shut until you tap it —
+// no one glancing at your screen learns anything.
+function showBadge() {
+  roleBadge.hidden = false;
+}
+
+roleBadge.addEventListener("click", () => {
+  if (!myRole) return;
+  const showing = !roleBadgeText.hidden;
+  roleBadgeText.textContent = showing ? "" : `${myRole.name} — ${myRole.description}`;
+  roleBadgeText.hidden = showing;
+  roleBadge.textContent = showing ? "Your fate ▾" : "Hide ▴";
 });
 
 bellBtn.addEventListener("click", () => socket.emit("ringBell"));
